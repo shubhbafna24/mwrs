@@ -1,0 +1,65 @@
+clc; clear; close all; 
+N = 20000; 
+SNR_db = -5:0.5:35; 
+SNR = 10.^(SNR_db / 10); 
+var = 1; % Sigma^2 
+% Generate Rayleigh random variable 
+r = sqrt(-2 * var * log(rand(1, N))); 
+figure; 
+histogram(r, 100); 
+title('Rayleigh Random Variable Histogram'); 
+xlabel('Random Variable R'); ylabel('Frequency'); 
+% Rayleigh PDF 
+a = 0:0.01:10; 
+R = (a / var) .* exp(-a.^2 / (2 * var)); 
+figure; 
+plot(a, R); 
+title('Rayleigh PDF'); xlabel('Random Variable'); ylabel('Probability'); 
+legend('Variance = 1'); 
+% Error Probability Computa on 
+Pe_BPSK_id = 0.5 * (1 - sqrt((var * SNR) ./ (1 + var * SNR))); 
+Pe_BFSK_id = 0.5 * (1 - sqrt(var * SNR ./ (2 + var * SNR))); 
+Pe_DPSK_id = 0.5 ./ (1 + var * SNR); 
+Pe_BPSK_NF = 0.5 * erfc(sqrt(SNR)); 
+Pe_BFSK_NF = 0.5 * erfc(sqrt(SNR / 2)); 
+Pe_DPSK_NF = 0.5 * exp(-SNR); 
+ 
+% BER Performance Plot 
+figure; 
+semilogy(SNR_db, Pe_BPSK_id, 'r.-', SNR_db, Pe_BFSK_id, 'r*-', SNR_db, Pe_DPSK_id, 'r--', ... 
+         SNR_db, Pe_BPSK_NF, 'b.-', SNR_db, Pe_BFSK_NF, 'b*-', SNR_db, Pe_DPSK_NF, 'b--'); 
+axis([-5 35 1e-6 1]); 
+title('Performance of BPSK, BFSK, DPSK'); 
+xlabel('SNR (dB)'); ylabel('Probability of Error'); 
+legend('BPSK Fading', 'BFSK Fading', 'DPSK Fading', 'BPSK AWGN', 'BFSK AWGN', 'DPSK AWGN'); 
+ 
+%% Monte Carlo Simula on for BER in Rayleigh Fading 
+Eb = 1; 
+EbNo_dB = 0:5:35; 
+No_over_2 = Eb * 10.^(-EbNo_dB / 10); 
+sigma = 1; var = sigma^2; 
+BER = zeros(1, length(EbNo_dB)); 
+ 
+for i = 1:length(EbNo_dB) 
+    no_errors = 0; no_bits = 0; 
+     
+    while no_errors < 10 % Stop a er at least 10 errors 
+        alpha = sigma * sqrt(-2 * log(rand)); % Rayleigh fading 
+        noise = sqrt(No_over_2(i)) * randn; % AWGN noise 
+        y = alpha * sqrt(Eb) + noise; % Received signal 
+         
+no_errors = no_errors + (y <= 0); 
+no_bits = no_bits + 1; 
+end 
+BER(i) = no_errors / no_bits; 
+end 
+% Theore cal BER Calcula on 
+rho_b = (Eb ./ No_over_2) .* var; 
+P2 = 0.5 * (1 - sqrt(rho_b ./ (1 + rho_b))); 
+% Plot BER results 
+figure; 
+semilogy(EbNo_dB, BER, '-*', EbNo_dB, P2, '-o'); 
+grid on; 
+title('Monte Carlo Simula on for BPSK Performance in Rayleigh Fading'); 
+xlabel('SNR per bit (dB)'); ylabel('Error Probability'); 
+legend('Monte Carlo Simula on', 'Theore cal BER');
